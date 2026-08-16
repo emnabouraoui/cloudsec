@@ -4,7 +4,9 @@ from azure.mgmt.storage import StorageManagementClient
 
 from .checks.storage import (
     check_storage_public_access,
-    check_secure_transfer
+    check_secure_transfer,
+    check_storage_tls_version,
+    check_storage_public_network_access
 )
 
 import json
@@ -60,6 +62,7 @@ def main():
     total_checks = 0
     passed_checks = 0
     failed_checks = 0
+    info_checks = 0
 
     for resource_group in resource_groups:
 
@@ -83,6 +86,16 @@ def main():
                     storage_client,
                     resource_group.name,
                     account.name
+                ),
+                check_storage_tls_version(
+                    storage_client,
+                    resource_group.name,
+                    account.name
+                ),
+                check_storage_public_network_access(
+                    storage_client,
+                    resource_group.name,
+                    account.name
                 )
             ]
 
@@ -92,6 +105,8 @@ def main():
 
                 if finding.severity == "PASS":
                     passed_checks += 1
+                elif finding.severity == "INFO":
+                    info_checks += 1
                 else:
                     failed_checks += 1
 
@@ -107,6 +122,7 @@ def main():
     print(f"Checks performed:  {total_checks}")
     print(f"Passed:            {passed_checks}")
     print(f"Failed:            {failed_checks}")
+    print(f"Informational:     {info_checks}")
 
     if failed_checks == 0:
         print("\nOverall status: SECURE")
