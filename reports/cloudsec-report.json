@@ -1,0 +1,45 @@
+{
+    "generated_at": "2026-08-16T21:53:40.157154",
+    "summary": {
+        "resources_scanned": 1,
+        "checks_performed": 4,
+        "passed": 3,
+        "failed": 0,
+        "informational": 1,
+        "status": "SECURE"
+    },
+    "findings": [
+        {
+            "rule_id": "STORAGE-001",
+            "severity": "PASS",
+            "resource": "cloudseclabstorage01",
+            "title": "Public blob access is disabled",
+            "description": "Anonymous public access to blob data is not allowed.",
+            "recommendation": "No action required."
+        },
+        {
+            "rule_id": "STORAGE-002",
+            "severity": "PASS",
+            "resource": "cloudseclabstorage01",
+            "title": "Secure transfer is required",
+            "description": "The storage account requires HTTPS traffic.",
+            "recommendation": "No action required."
+        },
+        {
+            "rule_id": "STORAGE-003",
+            "severity": "PASS",
+            "resource": "cloudseclabstorage01",
+            "title": "Minimum TLS version is secure",
+            "description": "The storage account requires MinimumTlsVersion.TLS1_2 or a newer TLS version.",
+            "recommendation": "No action required."
+        },
+        {
+            "rule_id": "STORAGE-004",
+            "severity": "INFO",
+            "resource": "cloudseclabstorage01",
+            "title": "Public network access configuration is unspecified",
+            "description": "Azure returned no explicit public network access setting for this storage account.",
+            "recommendation": "Review the storage account network configuration and explicitly configure public network access according to security requirements."
+        }
+    ]
+}

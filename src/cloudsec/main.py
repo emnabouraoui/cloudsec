@@ -9,6 +9,8 @@ from .checks.storage import (
     check_storage_public_network_access
 )
 
+from .reporting import save_json_report
+
 import json
 import subprocess
 
@@ -48,7 +50,9 @@ def main():
     print("\nAzure Resource Groups:")
     print("-------------------------------")
 
-    resource_groups = list(resource_client.resource_groups.list())
+    resource_groups = list(
+        resource_client.resource_groups.list()
+    )
 
     for resource_group in resource_groups:
         print(f"- {resource_group.name}")
@@ -63,6 +67,8 @@ def main():
     passed_checks = 0
     failed_checks = 0
     info_checks = 0
+
+    all_findings = []
 
     for resource_group in resource_groups:
 
@@ -101,12 +107,16 @@ def main():
 
             for finding in findings:
 
+                all_findings.append(finding)
+
                 total_checks += 1
 
                 if finding.severity == "PASS":
                     passed_checks += 1
+
                 elif finding.severity == "INFO":
                     info_checks += 1
+
                 else:
                     failed_checks += 1
 
@@ -128,6 +138,18 @@ def main():
         print("\nOverall status: SECURE")
     else:
         print("\nOverall status: ATTENTION REQUIRED")
+
+    save_json_report(
+        all_findings,
+        total_resources,
+        total_checks,
+        passed_checks,
+        failed_checks,
+        info_checks
+    )
+
+    print("\nJSON report generated:")
+    print("reports/cloudsec-report.json")
 
     print("\nCloudSec scan completed.")
 
