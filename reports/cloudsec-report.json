@@ -1,9 +1,9 @@
 {
-    "generated_at": "2026-08-16T21:53:40.157154",
+    "generated_at": "2026-08-18T12:04:49.026749",
     "summary": {
-        "resources_scanned": 1,
-        "checks_performed": 4,
-        "passed": 3,
+        "resources_scanned": 2,
+        "checks_performed": 5,
+        "passed": 4,
         "failed": 0,
         "informational": 1,
         "status": "SECURE"
@@ -40,6 +40,14 @@
             "title": "Public network access configuration is unspecified",
             "description": "Azure returned no explicit public network access setting for this storage account.",
             "recommendation": "Review the storage account network configuration and explicitly configure public network access according to security requirements."
+        },
+        {
+            "rule_id": "KEYVAULT-001",
+            "severity": "PASS",
+            "resource": "cloudseclabkv01",
+            "title": "Soft delete is enabled",
+            "description": "Deleted Key Vault objects can be recovered during the retention period.",
+            "recommendation": "No action required."
         }
     ]
 }
