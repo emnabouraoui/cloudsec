@@ -1,11 +1,9 @@
-import json
-import shutil
-import subprocess
-
 from azure.identity import AzureCliCredential
 from azure.mgmt.resource.resources import ResourceManagementClient
 from azure.mgmt.storage import StorageManagementClient
 from azure.mgmt.keyvault import KeyVaultManagementClient
+from azure.mgmt.compute import ComputeManagementClient
+from azure.mgmt.network import NetworkManagementClient
 
 from .checks.storage import (
     check_storage_public_access,
@@ -14,26 +12,44 @@ from .checks.storage import (
     check_storage_public_network_access,
 )
 
-from .checks.keyvault import (
-    check_keyvault_soft_delete,
-
-)
+from .checks.keyvault import check_keyvault_soft_delete
+from .checks.compute import check_vm_public_ip
 
 from .reporting import save_json_report
 
+import subprocess
+import json
 
-def get_subscription_id():
-    az_command = shutil.which("az.cmd") or shutil.which("az")
 
-    if not az_command:
-        raise RuntimeError(
-            "Azure CLI was not found. Make sure Azure CLI is installed "
-            "and available in PATH."
-        )
+def print_finding(finding):
+    """Print a security finding."""
 
-    result = subprocess.run(
+    print(f"\n[{finding.severity}] {finding.rule_id}")
+    print(f"Resource: {finding.resource}")
+    print(f"Title: {finding.title}")
+    print(f"Description: {finding.description}")
+    print(f"Recommendation: {finding.recommendation}")
+
+
+def main():
+
+    # ==========================================================
+    # CLOUDSEC HEADER
+    # ==========================================================
+
+    print("CloudSec")
+    print("Cloud Security Posture Management")
+    print("-------------------------------")
+
+    # ==========================================================
+    # AZURE AUTHENTICATION
+    # ==========================================================
+
+    credential = AzureCliCredential()
+
+    account_result = subprocess.run(
         [
-            az_command,
+            "az.cmd",
             "account",
             "show",
             "--output",
@@ -44,26 +60,12 @@ def get_subscription_id():
         check=True,
     )
 
-    account = json.loads(result.stdout)
+    account = json.loads(account_result.stdout)
+    subscription_id = account["id"]
 
-    return account["id"]
-
-
-def print_finding(finding):
-    print(f"\n[{finding.severity}] {finding.rule_id}")
-    print(f"Resource: {finding.resource}")
-    print(f"Title: {finding.title}")
-    print(f"Description: {finding.description}")
-    print(f"Recommendation: {finding.recommendation}")
-
-
-def main():
-    print("CloudSec")
-    print("Cloud Security Posture Management")
-    print("-------------------------------")
-
-    credential = AzureCliCredential()
-    subscription_id = get_subscription_id()
+    # ==========================================================
+    # AZURE CLIENTS
+    # ==========================================================
 
     resource_client = ResourceManagementClient(
         credential,
@@ -80,26 +82,40 @@ def main():
         subscription_id,
     )
 
+    compute_client = ComputeManagementClient(
+        credential,
+        subscription_id,
+    )
+
+    network_client = NetworkManagementClient(
+        credential,
+        subscription_id,
+    )
+
     # ==========================================================
     # RESOURCE GROUPS
     # ==========================================================
-
-    print("\nAzure Resource Groups:")
-    print("-------------------------------")
 
     resource_groups = list(
         resource_client.resource_groups.list()
     )
 
+    print("\nAzure Resource Groups:")
+    print("-------------------------------")
+
     for resource_group in resource_groups:
         print(f"- {resource_group.name}")
 
     print(
-        f"\nTotal resource groups: {len(resource_groups)}"
+        f"\nTotal resource groups: "
+        f"{len(resource_groups)}"
     )
 
+    # ==========================================================
+    # ALL FINDINGS
+    # ==========================================================
+
     all_findings = []
-    resources_scanned = 0
 
     # ==========================================================
     # STORAGE SECURITY SCAN
@@ -118,39 +134,56 @@ def main():
 
         for storage_account in storage_accounts:
 
-            resources_scanned += 1
+            account_name = storage_account.name
+            resource_group_name = resource_group.name
+
+            # --------------------------------------------------
+            # STORAGE-001
+            # --------------------------------------------------
 
             finding = check_storage_public_access(
                 storage_client,
-                resource_group.name,
-                storage_account.name,
+                resource_group_name,
+                account_name,
             )
 
             all_findings.append(finding)
             print_finding(finding)
+
+            # --------------------------------------------------
+            # STORAGE-002
+            # --------------------------------------------------
 
             finding = check_secure_transfer(
                 storage_client,
-                resource_group.name,
-                storage_account.name,
+                resource_group_name,
+                account_name,
             )
 
             all_findings.append(finding)
             print_finding(finding)
+
+            # --------------------------------------------------
+            # STORAGE-003
+            # --------------------------------------------------
 
             finding = check_storage_tls_version(
                 storage_client,
-                resource_group.name,
-                storage_account.name,
+                resource_group_name,
+                account_name,
             )
 
             all_findings.append(finding)
             print_finding(finding)
 
+            # --------------------------------------------------
+            # STORAGE-004
+            # --------------------------------------------------
+
             finding = check_storage_public_network_access(
                 storage_client,
-                resource_group.name,
-                storage_account.name,
+                resource_group_name,
+                account_name,
             )
 
             all_findings.append(finding)
@@ -165,15 +198,13 @@ def main():
 
     for resource_group in resource_groups:
 
-        key_vaults = list(
+        vaults = list(
             keyvault_client.vaults.list_by_resource_group(
                 resource_group.name
             )
         )
 
-        for vault in key_vaults:
-
-            resources_scanned += 1
+        for vault in vaults:
 
             finding = check_keyvault_soft_delete(
                 keyvault_client,
@@ -185,13 +216,61 @@ def main():
             print_finding(finding)
 
     # ==========================================================
-    # SUMMARY
+    # COMPUTE SECURITY SCAN
     # ==========================================================
+
+    print("\nCompute Security Scan")
+    print("===============================")
+
+    compute_findings = []
+    vm_count = 0
+
+    for resource_group in resource_groups:
+
+        virtual_machines = list(
+            compute_client.virtual_machines.list(
+                resource_group.name
+            )
+        )
+
+        vm_count += len(virtual_machines)
+
+        rg_findings = check_vm_public_ip(
+            compute_client,
+            network_client,
+            resource_group.name,
+        )
+
+        compute_findings.extend(rg_findings)
+
+        for finding in rg_findings:
+            print_finding(finding)
+
+    if vm_count == 0:
+        print("\nNo virtual machines found.")
+
+    all_findings.extend(compute_findings)
+
+    # ==========================================================
+    # SECURITY SUMMARY
+    # ==========================================================
+
+    checks_performed = len(all_findings)
 
     passed = sum(
         1
         for finding in all_findings
         if finding.severity == "PASS"
+    )
+
+    failed = sum(
+        1
+        for finding in all_findings
+        if finding.severity in (
+            "HIGH",
+            "MEDIUM",
+            "LOW",
+        )
     )
 
     informational = sum(
@@ -200,44 +279,69 @@ def main():
         if finding.severity == "INFO"
     )
 
-    failed = sum(
-        1
+    # Count unique resources
+    scanned_resources = {
+        finding.resource
         for finding in all_findings
-        if finding.severity not in ("PASS", "INFO")
-    )
+    }
 
-    checks_performed = len(all_findings)
+    resources_scanned = len(scanned_resources)
 
-    if failed == 0:
-        overall_status = "SECURE"
-    else:
+    if failed > 0:
         overall_status = "ATTENTION REQUIRED"
+    else:
+        overall_status = "SECURE"
+
+    # ==========================================================
+    # SUMMARY
+    # ==========================================================
 
     print("\nCloudSec Scan Summary")
     print("===============================")
-    print(f"Resources scanned: {resources_scanned}")
-    print(f"Checks performed:  {checks_performed}")
-    print(f"Passed:            {passed}")
-    print(f"Failed:            {failed}")
-    print(f"Informational:     {informational}")
 
-    print(f"\nOverall status: {overall_status}")
+    print(
+        f"Resources scanned: {resources_scanned}"
+    )
+
+    print(
+        f"Checks performed:  {checks_performed}"
+    )
+
+    print(
+        f"Passed:            {passed}"
+    )
+
+    print(
+        f"Failed:            {failed}"
+    )
+
+    print(
+        f"Informational:     {informational}"
+    )
+
+    print(
+        f"\nOverall status: {overall_status}"
+    )
 
     # ==========================================================
     # JSON REPORT
     # ==========================================================
 
     report_path = save_json_report(
-    all_findings,
-    resources_scanned,
-    checks_performed,
-    passed,
-    failed,
-    informational,
+        all_findings,
+        resources_scanned,
+        checks_performed,
+        passed,
+        failed,
+        informational,
     )
 
     print("\nJSON report generated:")
     print(report_path)
+
+    # ==========================================================
+    # COMPLETE
+    # ==========================================================
 
     print("\nCloudSec scan completed.")
 
