@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from pathlib import Path
 
 
 def save_json_report(
@@ -10,31 +11,48 @@ def save_json_report(
     failed,
     informational
 ):
-    report = {
-        "generated_at": datetime.utcnow().isoformat(),
+    reports_dir = Path("reports")
+    reports_dir.mkdir(exist_ok=True)
 
+    report_path = reports_dir / "cloudsec-report.json"
+
+    if failed > 0:
+        status = "ATTENTION REQUIRED"
+    else:
+        status = "SECURE"
+
+    report = {
+        "generated_at": datetime.now().isoformat(),
         "summary": {
             "resources_scanned": resources_scanned,
             "checks_performed": checks_performed,
             "passed": passed,
             "failed": failed,
             "informational": informational,
-            "status": (
-                "SECURE"
-                if failed == 0
-                else "ATTENTION REQUIRED"
-            )
+            "status": status
         },
-
         "findings": [
-            finding.to_dict()
+            {
+                "rule_id": finding.rule_id,
+                "severity": finding.severity,
+                "resource": finding.resource,
+                "title": finding.title,
+                "description": finding.description,
+                "recommendation": finding.recommendation
+            }
             for finding in findings
         ]
     }
 
     with open(
-        "reports/cloudsec-report.json",
+        report_path,
         "w",
         encoding="utf-8"
-    ) as f:
-        json.dump(report, f, indent=4)
+    ) as file:
+        json.dump(
+            report,
+            file,
+            indent=4
+        )
+
+    return str(report_path)

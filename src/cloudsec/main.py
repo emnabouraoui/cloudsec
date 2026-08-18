@@ -1,3 +1,7 @@
+from azure.mgmt.compute import ComputeManagementClient
+from azure.mgmt.network import NetworkManagementClient
+
+from .checks.compute import check_vm_public_ip
 from azure.identity import AzureCliCredential
 from azure.mgmt.resource.resources import ResourceManagementClient
 from azure.mgmt.storage import StorageManagementClient
@@ -5,6 +9,12 @@ from azure.mgmt.keyvault import KeyVaultManagementClient
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.network import NetworkManagementClient
 
+from .checks.storage import (
+    check_storage_public_access,
+    check_secure_transfer,
+    check_storage_tls_version,
+    check_storage_public_network_access,
+)
 from .checks.storage import (
     check_storage_public_access,
     check_secure_transfer,
@@ -91,6 +101,7 @@ def main():
         credential,
         subscription_id,
     )
+    
 
     # ==========================================================
     # RESOURCE GROUPS
@@ -215,42 +226,7 @@ def main():
             all_findings.append(finding)
             print_finding(finding)
 
-    # ==========================================================
-    # COMPUTE SECURITY SCAN
-    # ==========================================================
-
-    print("\nCompute Security Scan")
-    print("===============================")
-
-    compute_findings = []
-    vm_count = 0
-
-    for resource_group in resource_groups:
-
-        virtual_machines = list(
-            compute_client.virtual_machines.list(
-                resource_group.name
-            )
-        )
-
-        vm_count += len(virtual_machines)
-
-        rg_findings = check_vm_public_ip(
-            compute_client,
-            network_client,
-            resource_group.name,
-        )
-
-        compute_findings.extend(rg_findings)
-
-        for finding in rg_findings:
-            print_finding(finding)
-
-    if vm_count == 0:
-        print("\nNo virtual machines found.")
-
-    all_findings.extend(compute_findings)
-
+   
     # ==========================================================
     # SECURITY SUMMARY
     # ==========================================================
@@ -292,36 +268,75 @@ def main():
     else:
         overall_status = "SECURE"
 
+       # ==========================================================
+    # COMPUTE SECURITY SCAN
     # ==========================================================
-    # SUMMARY
+
+    print("\nCompute Security Scan")
+    print("===============================")
+
+    compute_findings = []
+
+    for resource_group in resource_groups:
+        rg_findings = check_vm_public_ip(
+            compute_client,
+            network_client,
+            resource_group.name
+        )
+
+        compute_findings.extend(rg_findings)
+
+        for finding in rg_findings:
+            print(f"\n[{finding.severity}] {finding.rule_id}")
+            print(f"Resource: {finding.resource}")
+            print(f"Title: {finding.title}")
+            print(f"Description: {finding.description}")
+            print(f"Recommendation: {finding.recommendation}")
+
+    all_findings.extend(compute_findings)
+
+
     # ==========================================================
+    # FINAL SUMMARY
+    # ==========================================================
+
+    resources_scanned = len(set(
+        finding.resource
+        for finding in all_findings
+    ))
+
+    checks_performed = len(all_findings)
+
+    passed = sum(
+        1 for finding in all_findings
+        if finding.severity == "PASS"
+    )
+
+    failed = sum(
+        1 for finding in all_findings
+        if finding.severity in ["HIGH", "MEDIUM"]
+    )
+
+    informational = sum(
+        1 for finding in all_findings
+        if finding.severity == "INFO"
+    )
 
     print("\nCloudSec Scan Summary")
     print("===============================")
+    print(f"Resources scanned: {resources_scanned}")
+    print(f"Checks performed:  {checks_performed}")
+    print(f"Passed:            {passed}")
+    print(f"Failed:            {failed}")
+    print(f"Informational:     {informational}")
 
-    print(
-        f"Resources scanned: {resources_scanned}"
-    )
+    if failed > 0:
+        status = "ATTENTION REQUIRED"
+    else:
+        status = "SECURE"
 
-    print(
-        f"Checks performed:  {checks_performed}"
-    )
+    print(f"\nOverall status: {status}")
 
-    print(
-        f"Passed:            {passed}"
-    )
-
-    print(
-        f"Failed:            {failed}"
-    )
-
-    print(
-        f"Informational:     {informational}"
-    )
-
-    print(
-        f"\nOverall status: {overall_status}"
-    )
 
     # ==========================================================
     # JSON REPORT
@@ -338,10 +353,6 @@ def main():
 
     print("\nJSON report generated:")
     print(report_path)
-
-    # ==========================================================
-    # COMPLETE
-    # ==========================================================
 
     print("\nCloudSec scan completed.")
 
