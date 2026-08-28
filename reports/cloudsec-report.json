@@ -1,11 +1,11 @@
 {
-    "generated_at": "2026-08-29T00:28:24.769784",
+    "generated_at": "2026-08-29T00:37:15.704301",
     "summary": {
         "resources_scanned": 6,
-        "checks_performed": 17,
+        "checks_performed": 18,
         "passed": 10,
         "failed": 6,
-        "informational": 1,
+        "informational": 2,
         "status": "ATTENTION REQUIRED"
     },
     "findings": [
@@ -64,6 +64,14 @@
             "title": "Purge protection is disabled",
             "description": "Key Vault resources can potentially be permanently deleted after soft deletion.",
             "recommendation": "Enable purge protection to help prevent permanent deletion of Key Vault resources."
+        },
+        {
+            "rule_id": "VM-001",
+            "severity": "INFO",
+            "resource": "cloudsec-lab",
+            "title": "No virtual machines found",
+            "description": "No virtual machines were found in this resource group, so VM public IP exposure could not be assessed.",
+            "recommendation": "No action required."
         },
         {
             "rule_id": "VM-002",
