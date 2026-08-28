@@ -7,10 +7,53 @@ def check_vm_public_ip(
     resource_group_name
 ):
     findings = []
-
-    virtual_machines = compute_client.virtual_machines.list(
-        resource_group_name
+    virtual_machines = list(
+        compute_client.virtual_machines.list(
+            resource_group_name
+        )
     )
+
+    if not virtual_machines:
+        findings.append(
+            SecurityFinding(
+                rule_id="VM-001",
+                severity="INFO",
+                resource=resource_group_name,
+                title="No virtual machines found",
+                description=(
+                    "No virtual machines were found in this "
+                    "resource group, so VM public IP exposure "
+                    "could not be assessed."
+                ),
+                recommendation="No action required."
+            )
+        )
+
+        return findings
+
+        virtual_machines = list(
+        compute_client.virtual_machines.list(
+            resource_group_name
+        )
+    )
+
+    if not virtual_machines:
+        findings.append(
+            SecurityFinding(
+                rule_id="VM-001",
+                severity="INFO",
+                resource=resource_group_name,
+                title="No virtual machines found",
+                description=(
+                    "No virtual machines were found in this "
+                    "resource group, so VM public IP exposure "
+                    "could not be assessed."
+                ),
+                recommendation="No action required."
+            )
+        )
+
+        return findings
 
     for vm in virtual_machines:
         vm_name = vm.name
