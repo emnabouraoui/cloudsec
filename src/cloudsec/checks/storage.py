@@ -1,4 +1,4 @@
-from ..models import SecurityFinding
+﻿from ..models import SecurityFinding
 
 
 def check_storage_public_access(
@@ -65,6 +65,8 @@ def check_secure_transfer(
         description="The storage account does not require HTTPS traffic.",
         recommendation="Enable secure transfer for the storage account."
     )
+
+
 def check_storage_tls_version(
     storage_client,
     resource_group,
@@ -101,6 +103,8 @@ def check_storage_tls_version(
         ),
         recommendation="Set the minimum TLS version to TLS 1.2."
     )
+
+
 def check_storage_public_network_access(
     storage_client,
     resource_group,
@@ -113,7 +117,25 @@ def check_storage_public_network_access(
 
     public_network_access = account.public_network_access
 
-    if public_network_access == "Disabled":
+    if public_network_access is None:
+        return SecurityFinding(
+            rule_id="STORAGE-004",
+            severity="INFO",
+            resource=account_name,
+            title="Public network access configuration is unavailable",
+            description=(
+                "Azure did not return a public network access "
+                "configuration for this storage account."
+            ),
+            recommendation=(
+                "Review the storage account network configuration "
+                "and explicitly configure public network access."
+            )
+        )
+
+    public_network_access = str(public_network_access).lower()
+
+    if "disabled" in public_network_access:
         return SecurityFinding(
             rule_id="STORAGE-004",
             severity="PASS",
@@ -126,7 +148,7 @@ def check_storage_public_network_access(
             recommendation="No action required."
         )
 
-    if public_network_access == "Enabled":
+    if "enabled" in public_network_access:
         return SecurityFinding(
             rule_id="STORAGE-004",
             severity="MEDIUM",
@@ -146,14 +168,14 @@ def check_storage_public_network_access(
         rule_id="STORAGE-004",
         severity="INFO",
         resource=account_name,
-        title="Public network access configuration is unspecified",
+        title="Unknown public network access configuration",
         description=(
-            "Azure returned no explicit public network access setting "
-            "for this storage account."
+            f"Azure returned an unrecognized public network access "
+            f"value: {public_network_access}"
         ),
         recommendation=(
-            "Review the storage account network configuration and "
-            "explicitly configure public network access according to "
-            "security requirements."
+            "Review the storage account network configuration "
+            "and verify that public network access is explicitly "
+            "configured."
         )
     )

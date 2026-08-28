@@ -1,5 +1,10 @@
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.network import NetworkManagementClient
+from .checks.iam import (
+    check_subscription_privileged_assignments,
+    check_subscription_privileged_service_principals,
+    check_direct_subscription_privileged_users,
+)
 
 from .checks.compute import check_vm_public_ip
 from azure.identity import AzureCliCredential
@@ -8,6 +13,11 @@ from azure.mgmt.storage import StorageManagementClient
 from azure.mgmt.keyvault import KeyVaultManagementClient
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.network import NetworkManagementClient
+from azure.mgmt.authorization import AuthorizationManagementClient
+from .checks.network import (
+    check_nsg_remote_access,
+    check_nsg_dangerous_rules,
+)
 
 from .checks.storage import (
     check_storage_public_access,
@@ -22,7 +32,11 @@ from .checks.storage import (
     check_storage_public_network_access,
 )
 
-from .checks.keyvault import check_keyvault_soft_delete
+from .checks.keyvault import (
+    check_keyvault_soft_delete,
+    check_keyvault_public_network_access,
+    check_keyvault_purge_protection,
+)
 from .checks.compute import check_vm_public_ip
 
 from .reporting import save_json_report
@@ -55,7 +69,7 @@ def main():
     # AZURE AUTHENTICATION
     # ==========================================================
 
-    credential = AzureCliCredential()
+    credential = AzureCliCredential(process_timeout=60)
 
     account_result = subprocess.run(
         [
@@ -101,7 +115,10 @@ def main():
         credential,
         subscription_id,
     )
-    
+    authorization_client = AuthorizationManagementClient(
+    credential,
+    subscription_id
+)
 
     # ==========================================================
     # RESOURCE GROUPS
@@ -200,7 +217,7 @@ def main():
             all_findings.append(finding)
             print_finding(finding)
 
-    # ==========================================================
+        # ==========================================================
     # KEY VAULT SECURITY SCAN
     # ==========================================================
 
@@ -217,6 +234,10 @@ def main():
 
         for vault in vaults:
 
+            # --------------------------------------------------
+            # KEYVAULT-001
+            # --------------------------------------------------
+
             finding = check_keyvault_soft_delete(
                 keyvault_client,
                 resource_group.name,
@@ -226,49 +247,36 @@ def main():
             all_findings.append(finding)
             print_finding(finding)
 
-   
+            # --------------------------------------------------
+            # KEYVAULT-002
+            # --------------------------------------------------
+
+            finding = check_keyvault_public_network_access(
+                keyvault_client,
+                resource_group.name,
+                vault.name,
+            )
+
+            all_findings.append(finding)
+            print_finding(finding)
+
+            # --------------------------------------------------
+            # KEYVAULT-003
+            # --------------------------------------------------
+
+            finding = check_keyvault_purge_protection(
+                keyvault_client,
+                resource_group.name,
+                vault.name,
+            )
+
+            all_findings.append(finding)
+            print_finding(finding)
+
+
+    
+
     # ==========================================================
-    # SECURITY SUMMARY
-    # ==========================================================
-
-    checks_performed = len(all_findings)
-
-    passed = sum(
-        1
-        for finding in all_findings
-        if finding.severity == "PASS"
-    )
-
-    failed = sum(
-        1
-        for finding in all_findings
-        if finding.severity in (
-            "HIGH",
-            "MEDIUM",
-            "LOW",
-        )
-    )
-
-    informational = sum(
-        1
-        for finding in all_findings
-        if finding.severity == "INFO"
-    )
-
-    # Count unique resources
-    scanned_resources = {
-        finding.resource
-        for finding in all_findings
-    }
-
-    resources_scanned = len(scanned_resources)
-
-    if failed > 0:
-        overall_status = "ATTENTION REQUIRED"
-    else:
-        overall_status = "SECURE"
-
-       # ==========================================================
     # COMPUTE SECURITY SCAN
     # ==========================================================
 
@@ -287,15 +295,93 @@ def main():
         compute_findings.extend(rg_findings)
 
         for finding in rg_findings:
+            print_finding(finding)
+
+    all_findings.extend(compute_findings)
+        # ==========================================================
+    # NETWORK SECURITY SCAN
+    # ==========================================================
+
+    print("\nNetwork Security Scan")
+    print("===============================")
+
+    network_findings = []
+
+    for resource_group in resource_groups:
+        rg_findings = check_nsg_remote_access(
+            network_client,
+            resource_group.name
+        )
+
+        network_findings.extend(rg_findings)
+
+        for finding in rg_findings:
+            print(f"\n[{finding.severity}] {finding.rule_id}")
+            print(f"Resource: {finding.resource}")
+            print(f"Title: {finding.title}")
+            print(f"Description: {finding.description}")
+            print(f"Recommendation: {finding.recommendation}")
+    all_findings.extend(network_findings)
+
+    # ==========================================================
+    # VM-003 - DANGEROUS NSG RULES
+    # ==========================================================
+
+    for resource_group in resource_groups:
+        rg_findings = check_nsg_dangerous_rules(
+            network_client,
+            resource_group.name,
+        )
+
+        network_findings.extend(rg_findings)
+
+        for finding in rg_findings:
             print(f"\n[{finding.severity}] {finding.rule_id}")
             print(f"Resource: {finding.resource}")
             print(f"Title: {finding.title}")
             print(f"Description: {finding.description}")
             print(f"Recommendation: {finding.recommendation}")
 
-    all_findings.extend(compute_findings)
+    all_findings.extend(network_findings)
 
+        # ==========================================================
+    # IAM / RBAC SECURITY SCAN
+    # ==========================================================
 
+    print("\nIAM / RBAC Security Scan")
+    print("===============================")
+
+    iam_findings = check_subscription_privileged_assignments(
+        authorization_client,
+        subscription_id,
+    )
+
+    for finding in iam_findings:
+        print_finding(finding)
+
+    all_findings.extend(iam_findings)
+
+    iam_service_principal_findings = (
+        check_subscription_privileged_service_principals(
+            authorization_client,
+            subscription_id,
+        )
+    )
+
+    for finding in iam_service_principal_findings:
+        print_finding(finding)
+
+    all_findings.extend(iam_service_principal_findings)
+
+    iam_user_findings = check_direct_subscription_privileged_users(
+        authorization_client,
+        subscription_id,
+    )
+
+    for finding in iam_user_findings:
+        print_finding(finding)
+
+    all_findings.extend(iam_user_findings)
     # ==========================================================
     # FINAL SUMMARY
     # ==========================================================
@@ -308,17 +394,20 @@ def main():
     checks_performed = len(all_findings)
 
     passed = sum(
-        1 for finding in all_findings
+        1
+        for finding in all_findings
         if finding.severity == "PASS"
     )
 
     failed = sum(
-        1 for finding in all_findings
+        1
+        for finding in all_findings
         if finding.severity in ["HIGH", "MEDIUM"]
     )
 
     informational = sum(
-        1 for finding in all_findings
+        1
+        for finding in all_findings
         if finding.severity == "INFO"
     )
 
@@ -331,12 +420,11 @@ def main():
     print(f"Informational:     {informational}")
 
     if failed > 0:
-        status = "ATTENTION REQUIRED"
+        overall_status = "AT RISK"
     else:
-        status = "SECURE"
+        overall_status = "SECURE"
 
-    print(f"\nOverall status: {status}")
-
+    print(f"\nOverall status: {overall_status}")
 
     # ==========================================================
     # JSON REPORT

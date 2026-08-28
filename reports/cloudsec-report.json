@@ -1,12 +1,12 @@
 {
-    "generated_at": "2026-08-18T22:44:04.063954",
+    "generated_at": "2026-08-29T00:28:24.769784",
     "summary": {
-        "resources_scanned": 2,
-        "checks_performed": 5,
-        "passed": 4,
-        "failed": 0,
+        "resources_scanned": 6,
+        "checks_performed": 17,
+        "passed": 10,
+        "failed": 6,
         "informational": 1,
-        "status": "SECURE"
+        "status": "ATTENTION REQUIRED"
     },
     "findings": [
         {
@@ -37,9 +37,9 @@
             "rule_id": "STORAGE-004",
             "severity": "INFO",
             "resource": "cloudseclabstorage01",
-            "title": "Public network access configuration is unspecified",
-            "description": "Azure returned no explicit public network access setting for this storage account.",
-            "recommendation": "Review the storage account network configuration and explicitly configure public network access according to security requirements."
+            "title": "Public network access configuration is unavailable",
+            "description": "Azure did not return a public network access configuration for this storage account.",
+            "recommendation": "Review the storage account network configuration and explicitly configure public network access."
         },
         {
             "rule_id": "KEYVAULT-001",
@@ -48,6 +48,102 @@
             "title": "Soft delete is enabled",
             "description": "Deleted Key Vault objects can be recovered during the retention period.",
             "recommendation": "No action required."
+        },
+        {
+            "rule_id": "KEYVAULT-002",
+            "severity": "MEDIUM",
+            "resource": "cloudseclabkv01",
+            "title": "Public network access is enabled",
+            "description": "The Key Vault accepts connections through the public network.",
+            "recommendation": "Disable public network access or restrict access using appropriate network controls."
+        },
+        {
+            "rule_id": "KEYVAULT-003",
+            "severity": "HIGH",
+            "resource": "cloudseclabkv01",
+            "title": "Purge protection is disabled",
+            "description": "Key Vault resources can potentially be permanently deleted after soft deletion.",
+            "recommendation": "Enable purge protection to help prevent permanent deletion of Key Vault resources."
+        },
+        {
+            "rule_id": "VM-002",
+            "severity": "PASS",
+            "resource": "cloudsec-lab",
+            "title": "No SSH or RDP exposure detected",
+            "description": "No inbound NSG rule was found exposing SSH or RDP directly to the Internet.",
+            "recommendation": "No action required."
+        },
+        {
+            "rule_id": "VM-002",
+            "severity": "PASS",
+            "resource": "cloudsec-lab",
+            "title": "No SSH or RDP exposure detected",
+            "description": "No inbound NSG rule was found exposing SSH or RDP directly to the Internet.",
+            "recommendation": "No action required."
+        },
+        {
+            "rule_id": "VM-003",
+            "severity": "PASS",
+            "resource": "cloudsec-lab",
+            "title": "No dangerous inbound NSG rules detected",
+            "description": "No inbound NSG rule was found exposing high-risk services to the Internet.",
+            "recommendation": "No action required."
+        },
+        {
+            "rule_id": "IAM-001",
+            "severity": "HIGH",
+            "resource": "bd490a81-4e3a-453e-b13c-eb847d28b091",
+            "title": "Subscription Owner role detected",
+            "description": "Principal bd490a81-4e3a-453e-b13c-eb847d28b091 has the Owner role at subscription scope. Owner provides full management access to Azure resources and can assign Azure RBAC roles.",
+            "recommendation": "Review whether Owner access is required. Apply least privilege and use a more specific role whenever possible."
+        },
+        {
+            "rule_id": "IAM-003",
+            "severity": "HIGH",
+            "resource": "f00eb528-c668-4d32-adc8-61ae122b8490",
+            "title": "Subscription User Access Administrator role detected",
+            "description": "Principal f00eb528-c668-4d32-adc8-61ae122b8490 has the User Access Administrator role at subscription scope. User Access Administrator can manage access to Azure resources by assigning and removing Azure RBAC roles.",
+            "recommendation": "Review whether this level of access is required. Restrict User Access Administrator assignments to trusted administrators and apply least privilege."
+        },
+        {
+            "rule_id": "IAM-002",
+            "severity": "PASS",
+            "resource": "f78e77be-be49-4bbe-a84e-2f405337f26a",
+            "title": "No subscription Contributor assignments detected",
+            "description": "No Contributor role assignment was detected at subscription scope.",
+            "recommendation": "No action required."
+        },
+        {
+            "rule_id": "IAM-004",
+            "severity": "PASS",
+            "resource": "f78e77be-be49-4bbe-a84e-2f405337f26a",
+            "title": "No subscription Role Based Access Control Administrator assignments detected",
+            "description": "No Role Based Access Control Administrator role assignment was detected at subscription scope.",
+            "recommendation": "No action required."
+        },
+        {
+            "rule_id": "IAM-005",
+            "severity": "PASS",
+            "resource": "f78e77be-be49-4bbe-a84e-2f405337f26a",
+            "title": "No privileged service principal or managed identity assignments detected",
+            "description": "No subscription-level privileged role assignment was detected for a service principal or managed identity.",
+            "recommendation": "No action required."
+        },
+        {
+            "rule_id": "IAM-006",
+            "severity": "HIGH",
+            "resource": "bd490a81-4e3a-453e-b13c-eb847d28b091",
+            "title": "Direct privileged user assignment detected",
+            "description": "User bd490a81-4e3a-453e-b13c-eb847d28b091 has the Owner role directly assigned at subscription scope. Direct privileged access increases the risk of excessive permissions and makes access governance more difficult.",
+            "recommendation": "Review whether direct subscription-level access is required. Prefer group-based access, least-privilege roles, and narrower scopes whenever possible."
+        },
+        {
+            "rule_id": "IAM-006",
+            "severity": "HIGH",
+            "resource": "f00eb528-c668-4d32-adc8-61ae122b8490",
+            "title": "Direct privileged user assignment detected",
+            "description": "User f00eb528-c668-4d32-adc8-61ae122b8490 has the User Access Administrator role directly assigned at subscription scope. Direct privileged access increases the risk of excessive permissions and makes access governance more difficult.",
+            "recommendation": "Review whether direct subscription-level access is required. Prefer group-based access, least-privilege roles, and narrower scopes whenever possible."
         }
     ]
 }
