@@ -433,6 +433,7 @@ def main():
         passed,
         failed,
         informational,
+        subscription_id,
     )
 
     print("\nJSON report generated:")

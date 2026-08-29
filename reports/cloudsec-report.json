@@ -4,8 +4,8 @@
         "description": "Cloud Security Posture Management"
     },
     "scan": {
-        "generated_at": "2026-08-29T23:27:37.259812+00:00",
-        "subscription_id": null
+        "generated_at": "2026-08-29T23:38:04.808518+00:00",
+        "subscription_id": "f78e77be-be49-4bbe-a84e-2f405337f26a"
     },
     "summary": {
         "resources_scanned": 6,
