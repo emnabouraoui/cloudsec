@@ -1,9 +1,16 @@
 {
-    "generated_at": "2026-08-29T00:37:15.704301",
+    "tool": {
+        "name": "CloudSec",
+        "description": "Cloud Security Posture Management"
+    },
+    "scan": {
+        "generated_at": "2026-08-29T23:27:37.259812+00:00",
+        "subscription_id": null
+    },
     "summary": {
         "resources_scanned": 6,
-        "checks_performed": 18,
-        "passed": 10,
+        "checks_performed": 17,
+        "passed": 9,
         "failed": 6,
         "informational": 2,
         "status": "ATTENTION REQUIRED"
@@ -71,14 +78,6 @@
             "resource": "cloudsec-lab",
             "title": "No virtual machines found",
             "description": "No virtual machines were found in this resource group, so VM public IP exposure could not be assessed.",
-            "recommendation": "No action required."
-        },
-        {
-            "rule_id": "VM-002",
-            "severity": "PASS",
-            "resource": "cloudsec-lab",
-            "title": "No SSH or RDP exposure detected",
-            "description": "No inbound NSG rule was found exposing SSH or RDP directly to the Internet.",
             "recommendation": "No action required."
         },
         {

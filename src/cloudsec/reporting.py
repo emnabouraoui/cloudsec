@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -9,7 +9,8 @@ def save_json_report(
     checks_performed,
     passed,
     failed,
-    informational
+    informational,
+    subscription_id=None
 ):
     reports_dir = Path("reports")
     reports_dir.mkdir(exist_ok=True)
@@ -22,7 +23,14 @@ def save_json_report(
         status = "SECURE"
 
     report = {
-        "generated_at": datetime.now().isoformat(),
+        "tool": {
+            "name": "CloudSec",
+            "description": "Cloud Security Posture Management"
+        },
+        "scan": {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "subscription_id": subscription_id
+        },
         "summary": {
             "resources_scanned": resources_scanned,
             "checks_performed": checks_performed,

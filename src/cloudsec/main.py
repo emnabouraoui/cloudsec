@@ -116,9 +116,9 @@ def main():
         subscription_id,
     )
     authorization_client = AuthorizationManagementClient(
-    credential,
-    subscription_id
-)
+        credential,
+        subscription_id,
+    )
 
     # ==========================================================
     # RESOURCE GROUPS
@@ -307,6 +307,7 @@ def main():
 
     network_findings = []
 
+    # VM-002 - SSH / RDP exposure
     for resource_group in resource_groups:
         rg_findings = check_nsg_remote_access(
             network_client,
@@ -316,16 +317,15 @@ def main():
         network_findings.extend(rg_findings)
 
         for finding in rg_findings:
-            print(f"\n[{finding.severity}] {finding.rule_id}")
-            print(f"Resource: {finding.resource}")
-            print(f"Title: {finding.title}")
-            print(f"Description: {finding.description}")
-            print(f"Recommendation: {finding.recommendation}")
+            print_finding(finding)
+
     all_findings.extend(network_findings)
 
     # ==========================================================
     # VM-003 - DANGEROUS NSG RULES
     # ==========================================================
+
+    dangerous_rule_findings = []
 
     for resource_group in resource_groups:
         rg_findings = check_nsg_dangerous_rules(
@@ -333,18 +333,14 @@ def main():
             resource_group.name,
         )
 
-        network_findings.extend(rg_findings)
+        dangerous_rule_findings.extend(rg_findings)
 
         for finding in rg_findings:
-            print(f"\n[{finding.severity}] {finding.rule_id}")
-            print(f"Resource: {finding.resource}")
-            print(f"Title: {finding.title}")
-            print(f"Description: {finding.description}")
-            print(f"Recommendation: {finding.recommendation}")
+            print_finding(finding)
 
-    all_findings.extend(network_findings)
+    all_findings.extend(dangerous_rule_findings)
 
-        # ==========================================================
+    # ==========================================================
     # IAM / RBAC SECURITY SCAN
     # ==========================================================
 
@@ -382,7 +378,7 @@ def main():
         print_finding(finding)
 
     all_findings.extend(iam_user_findings)
-    # ==========================================================
+        # ==========================================================
     # FINAL SUMMARY
     # ==========================================================
 
@@ -402,7 +398,7 @@ def main():
     failed = sum(
         1
         for finding in all_findings
-        if finding.severity in ["HIGH", "MEDIUM"]
+        if finding.severity in ("HIGH", "MEDIUM", "LOW")
     )
 
     informational = sum(
