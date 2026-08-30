@@ -10,7 +10,12 @@ def save_json_report(
     passed,
     failed,
     informational,
-    subscription_id=None
+    subscription_id=None,
+    risk_score=0,
+    risk_level="SECURE",
+    risk_high=0,
+    risk_medium=0,
+    risk_low=0
 ):
     reports_dir = Path("reports")
     reports_dir.mkdir(exist_ok=True)
@@ -38,6 +43,15 @@ def save_json_report(
             "failed": failed,
             "informational": informational,
             "status": status
+        },
+        "risk": {
+            "score": risk_score,
+            "level": risk_level,
+            "high": risk_high,
+            "medium": risk_medium,
+            "low": risk_low,
+            "informational": informational,
+            "passed": passed
         },
         "findings": [
             {

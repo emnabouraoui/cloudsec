@@ -40,6 +40,7 @@ from .checks.keyvault import (
 from .checks.compute import check_vm_public_ip
 
 from .reporting import save_json_report
+from .risk import calculate_total_risk, calculate_risk_level
 
 import subprocess
 import json
@@ -406,6 +407,27 @@ def main():
         for finding in all_findings
         if finding.severity == "INFO"
     )
+    # ==========================================================
+    # RISK ASSESSMENT
+    # ==========================================================
+
+    risk_score = calculate_total_risk(all_findings)
+    risk_level = calculate_risk_level(risk_score)
+
+    high = sum(1 for f in all_findings if f.severity == "HIGH")
+    medium = sum(1 for f in all_findings if f.severity == "MEDIUM")
+    low = sum(1 for f in all_findings if f.severity == "LOW")
+
+
+    print("\nCloudSec Risk Assessment")
+    print("===============================")
+    print(f"Risk score:       {risk_score}")
+    print(f"Risk level:       {risk_level}")
+    print(f"HIGH findings:    {high}")
+    print(f"MEDIUM findings:  {medium}")
+    print(f"LOW findings:     {low}")
+    print(f"INFO findings:    {informational}")
+    print(f"PASS findings:    {passed}")
 
     print("\nCloudSec Scan Summary")
     print("===============================")
@@ -426,14 +448,21 @@ def main():
     # JSON REPORT
     # ==========================================================
 
+    print("\nGenerating JSON report...")
+
     report_path = save_json_report(
-        all_findings,
-        resources_scanned,
-        checks_performed,
-        passed,
-        failed,
-        informational,
-        subscription_id,
+    all_findings,
+    resources_scanned,
+    checks_performed,
+    passed,
+    failed,
+    informational,
+    subscription_id,
+    risk_score,
+    risk_level,
+    risk_high=high,
+    risk_medium=medium,
+    risk_low=low,
     )
 
     print("\nJSON report generated:")
