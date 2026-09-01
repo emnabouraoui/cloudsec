@@ -1,3 +1,4 @@
+
 SEVERITY_SCORES = {
     "PASS": 0,
     "INFO": 0,
@@ -44,3 +45,24 @@ def calculate_risk_level(total_score):
         return "MEDIUM"
 
     return "HIGH"
+
+
+def prioritize_findings(findings):
+    """
+    Return security findings ordered by risk priority.
+
+    PASS and INFO findings are excluded because they do not
+    represent actionable security risks.
+    """
+
+    actionable_findings = [
+        finding
+        for finding in findings
+        if finding.severity.upper() not in ("PASS", "INFO")
+    ]
+
+    return sorted(
+        actionable_findings,
+        key=calculate_finding_risk,
+        reverse=True
+    )
