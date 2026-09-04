@@ -40,6 +40,12 @@ from .checks.keyvault import (
 from .checks.compute import check_vm_public_ip
 
 from .reporting import save_json_report
+from .history import (
+    save_scan,
+    load_previous_scan,
+    compare_scans,
+    calculate_risk_change,
+)
 from .risk import (
     calculate_total_risk,
     calculate_risk_level,
@@ -461,7 +467,7 @@ def main():
 
     print("\nGenerating JSON report...")
 
-    report_path = save_json_report(
+    report_path, current_report = save_json_report(
         all_findings,
         resources_scanned,
         checks_performed,
@@ -478,6 +484,60 @@ def main():
 
     print("\nJSON report generated:")
     print(report_path)
+
+    # ==========================================================
+    # SCAN HISTORY
+    # ==========================================================
+
+    previous_scan = load_previous_scan()
+
+    comparison = compare_scans(
+        previous_scan,
+        current_report,
+    )
+
+    risk_change = calculate_risk_change(
+        previous_scan,
+        current_report,
+    )
+
+    print("\nCloudSec Scan History")
+    print("===============================")
+
+    if previous_scan is None:
+        print("Previous scan: None")
+        print("This is the first historical scan.")
+    else:
+        previous_score = previous_scan.get(
+            "risk", {}
+        ).get(
+            "score", 0
+        )
+
+        previous_level = previous_scan.get(
+            "risk", {}
+        ).get(
+            "level", "UNKNOWN"
+        )
+
+        print(f"Previous risk score: {previous_score}")
+        print(f"Previous risk level: {previous_level}")
+
+        if risk_change > 0:
+            print(f"Risk change: +{risk_change}")
+        elif risk_change < 0:
+            print(f"Risk change: {risk_change}")
+        else:
+            print("Risk change: 0")
+
+        print(f"New findings:        {len(comparison['new'])}")
+        print(f"Resolved findings:   {len(comparison['resolved'])}")
+        print(f"Persistent findings: {len(comparison['persistent'])}")
+
+    history_path = save_scan(current_report)
+
+    print("\nHistorical scan saved:")
+    print(history_path)
 
     print("\nCloudSec scan completed.")
 

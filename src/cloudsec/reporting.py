@@ -77,4 +77,4 @@ def save_json_report(
             indent=4
         )
 
-    return str(report_path)
+    return str(report_path), report
